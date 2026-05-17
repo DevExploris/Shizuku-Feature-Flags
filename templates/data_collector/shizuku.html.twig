@@ -1,0 +1,150 @@
+{% extends '@WebProfiler/Profiler/layout.html.twig' %}
+
+{% block toolbar %}
+    {% set icon %}
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-flag">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+            <path d="M5 5a5 5 0 0 1 7 0a5 5 0 0 0 7 0v9a5 5 0 0 1 -7 0a5 5 0 0 0 -7 0v-9" />
+            <path d="M5 21v-7" />
+        </svg>
+        <span class="sf-toolbar-value">
+            {{ collector.enabledCount }} / {{ collector.totalCount }}</span>
+    {% endset %}
+    {% set text %}
+        <div class="sf-toolbar-info-piece">
+            <b>Feature Flags</b>
+            <span>{{ collector.enabledCount }} enabled / {{ collector.totalCount }} checked</span>
+        </div>
+        {% if collector.lockedCount > 0 %}
+            <div class="sf-toolbar-info-piece">
+                <b>Cleanup required</b>
+                <span>{{ collector.lockedCount }} ⚠️</span>
+            </div>
+        {% endif %}
+        {% if collector.unknownCount > 0 %}
+            <div class="sf-toolbar-info-piece">
+                <b>Unknown</b>
+                <span>{{ collector.unknownCount }}</span>
+            </div>
+        {% endif %}
+        <div class="sf-toolbar-info-piece">
+            <a href="https://devexploris.com"><i>Shizuku Feature Flags</i></a>
+        </div>
+    {% endset %}
+    {{ include('@WebProfiler/Profiler/toolbar_item.html.twig', { link: profiler_url }) }}
+{% endblock %}
+
+{% block menu %}
+    <span class="label {{ collector.unknownCount > 0 or collector.lockedCount > 0 ? 'label-status-warning' : '' }}">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+             class="icon icon-tabler icons-tabler-outline icon-tabler-flag">
+	        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+	        <path d="M5 5a5 5 0 0 1 7 0a5 5 0 0 0 7 0v9a5 5 0 0 1 -7 0a5 5 0 0 0 -7 0v-9"/>
+	        <path d="M5 21v-7"/>
+        </svg>
+        <strong>Feature Flags</strong>
+        <span class="count">
+            <span>{{ collector.enabledCount }}</span>
+            <span>{{ collector.totalCount }}</span>
+        </span>
+        {% if collector.lockedCount > 0 or collector.unknownCount > 0 %}
+            <span class="count" style="margin-left: 5px">
+                <span>{{ collector.lockedCount + collector.unknownCount }} ⚠️</span>
+            </span>
+        {% endif %}
+    </span>
+{% endblock %}
+
+{% block panel %}
+    <h2>Feature Flags</h2>
+    {% if collector.flags is empty %}
+        <div class="empty">
+            <p>No feature flags were checked during this request.</p>
+        </div>
+    {% else %}
+        <div class="metrics">
+            <div class="metric">
+                <span class="value">{{ collector.totalCount }}</span>
+                <span class="label">Checked</span>
+            </div>
+            <div class="metric">
+                <span class="value">{{ collector.enabledCount }}</span>
+                <span class="label">Enabled</span>
+            </div>
+            <div class="metric">
+                <span class="value">{{ collector.totalCount - collector.enabledCount }}</span>
+                <span class="label">Disabled</span>
+            </div>
+            <div class="metric {{ collector.unknownCount > 0 ? 'metric-red' : '' }}"
+                {% if collector.unknownCount > 0 %}
+                    title="{{ collector.unknownFlags|column('name')|join(', ') }}"
+                    style="cursor: help;"
+                {% endif %}>
+                <span class="value">{{ collector.unknownCount }}</span>
+                <span class="label">Unknown</span>
+            </div>
+            <div class="metric {{ collector.lockedCount > 0 ? 'metric-yellow' : '' }}">
+                <span class="value">{{ collector.lockedCount }}</span>
+                <span class="label">Cleanup required</span>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+            <tr>
+                <th>Name</th>
+                <th>Enabled</th>
+                <th>Status</th>
+                <th>Called from</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for name, flag in collector.flags %}
+                <tr>
+                    <td><code>{{ name }}</code></td>
+                    <td>{{ flag.enabled ? 'Yes' : 'No' }}</td>
+                    <td>{{ flag.locked ? 'Must be cleaned before removal' : '—' }}</td>
+                    <td>
+                        {% if flag.callers is defined and flag.callers %}
+                            {% for caller in flag.callers %}
+                                <code>{{ caller.class }}::{{ caller.function }}</code>{% if not loop.last %} →{% endif %}
+                            {% endfor %}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    {% if collector.unknownFlags is not empty %}
+        <h3>Unknown flags</h3>
+        <table>
+            <thead>
+            <tr>
+                <th>Name</th>
+                <th>Called from</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for flag in collector.unknownFlags %}
+                <tr>
+                    <td><code>{{ flag.name }}</code></td>
+                    <td>
+                        {% if flag.callers is defined and flag.callers %}
+                            {% for caller in flag.callers %}
+                                <code>{{ caller.class }}::{{ caller.function }}</code>{% if not loop.last %} →{% endif %}
+                            {% endfor %}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+{% endblock %}

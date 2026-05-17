@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shizuku Feature Flags · Symfony Bundle</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Fragment+Mono&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+  <style>
+    /* ── Design tokens (devexploris.com) ───────────────────────── */
+    :root {
+      --color-bg:      #090907;
+      --color-surface: #131310;
+      --color-border:  #1c1c18;
+      --color-border2: #252520;
+      --color-accent:  #ff6a1a;
+      --color-accent2: #ffb347;
+      --color-ink:     #ede9e0;
+      --color-muted:   #4a4840;
+      --color-muted2:  #787774;
+      --font-sans: 'Bricolage Grotesque', sans-serif;
+      --font-mono: 'Fragment Mono', monospace;
+    }
+
+    /* ── Reset & base ───────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; scroll-padding-top: 2rem; font-size: 16px; }
+    body {
+      background: var(--color-bg);
+      color: var(--color-ink);
+      font-family: var(--font-sans);
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    /* ── Logo ───────────────────────────────────────────────────── */
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      font-family: var(--font-sans);
+      font-weight: 800;
+      font-size: 17px;
+      letter-spacing: -0.025em;
+      color: var(--color-ink);
+    }
+    .logo-bracket {
+      font-family: var(--font-mono);
+      font-size: 1.25rem;
+      font-weight: 400;
+      color: var(--color-accent);
+    }
+
+    /* ── Tags / badges ──────────────────────────────────────────── */
+    .tag {
+      display: inline-block;
+      border: 1px solid var(--color-border2);
+      color: var(--color-muted2);
+      font-size: 9px;
+      letter-spacing: .1em;
+      padding: 3px 9px;
+      text-transform: uppercase;
+      font-family: var(--font-sans);
+    }
+    .tag.accent { border-color: var(--color-accent); color: var(--color-accent); }
+
+    /* ── Sidebar nav links ──────────────────────────────────────── */
+    .nav-link {
+      display: block;
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--color-muted2);
+      padding: 5px 0 5px 12px;
+      border-left: 1px solid transparent;
+      transition: color .15s, border-color .15s;
+      position: relative;
+    }
+    .nav-link:hover { color: var(--color-ink); border-left-color: var(--color-border2); }
+    .nav-link.active { color: var(--color-accent); border-left-color: var(--color-accent); }
+    .nav-link.sub { font-weight: 400; font-size: 12px; padding-left: 24px; color: var(--color-muted); }
+    .nav-link.sub:hover { color: var(--color-muted2); }
+    .nav-link.sub.active { color: var(--color-accent2); border-left-color: var(--color-accent2); }
+
+    /* ── Layout ─────────────────────────────────────────────────── */
+    .layout {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .sidebar {
+      border-right: 1px solid var(--color-border);
+      padding: 3rem 1.5rem 3rem 0;
+    }
+    .sidebar-inner { position: sticky; top: 2rem; }
+    .content { padding: 3rem 0 6rem 3.5rem; min-width: 0; }
+
+    /* ── Section structure ──────────────────────────────────────── */
+    .section { padding-top: 3.5rem; border-top: 1px solid var(--color-border); margin-top: 3.5rem; }
+    .section:first-child { padding-top: 0; border-top: none; margin-top: 0; }
+    .section-label {
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+    .section-num {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--color-accent);
+      letter-spacing: .1em;
+      flex-shrink: 0;
+    }
+    h2 {
+      font-size: clamp(1.4rem, 2.5vw, 1.75rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--color-ink);
+    }
+    h3 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--color-ink);
+      margin: 2rem 0 0.75rem;
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: .1em;
+      color: var(--color-muted2);
+    }
+    p { color: var(--color-muted2); font-size: 0.9rem; line-height: 1.85; margin-bottom: 0.75rem; }
+    strong { color: var(--color-ink); font-weight: 600; }
+
+    /* ── Inline code ────────────────────────────────────────────── */
+    code:not(.hljs) {
+      font-family: var(--font-mono);
+      font-size: 0.8em;
+      color: var(--color-accent2);
+      background: rgba(255,107,26,.08);
+      padding: 2px 6px;
+      border-radius: 2px;
+    }
+
+    /* ── Code blocks ────────────────────────────────────────────── */
+    pre {
+      margin: 1rem 0;
+      border-radius: 0;
+      border: 1px solid var(--color-border2);
+      overflow: hidden;
+    }
+    .hljs {
+      background: var(--color-surface) !important;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      line-height: 1.75;
+      padding: 1.25rem 1.5rem;
+    }
+
+    /* ── Terminal blocks ────────────────────────────────────────── */
+    .terminal {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border2);
+      padding: 1rem 1.25rem;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      line-height: 1.9;
+      color: var(--color-muted2);
+    }
+    .terminal .prompt { color: var(--color-muted); user-select: none; }
+    .terminal .cmd { color: var(--color-ink); }
+    .terminal .opt { color: #4dff9a; }
+    .terminal .arg { color: var(--color-accent2); }
+
+    /* ── Tables ─────────────────────────────────────────────────── */
+    .table-wrap { border: 1px solid var(--color-border); overflow: hidden; margin: 1rem 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th {
+      text-align: left;
+      padding: 0.6rem 1rem;
+      background: var(--color-surface);
+      color: var(--color-muted2);
+      font-size: 9px;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      font-weight: 600;
+      border-bottom: 1px solid var(--color-border2);
+    }
+    td {
+      padding: 0.65rem 1rem;
+      border-bottom: 1px solid var(--color-border);
+      vertical-align: top;
+      color: var(--color-muted2);
+    }
+    tr:last-child td { border-bottom: none; }
+    td:first-child { color: var(--color-ink); font-family: var(--font-mono); font-size: 0.8rem; }
+
+    /* ── Feature cards ──────────────────────────────────────────── */
+    .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; border: 1px solid var(--color-border); }
+    .card {
+      padding: 1.5rem;
+      border-right: 1px solid var(--color-border);
+    }
+    .card:last-child { border-right: none; }
+    .card-title { font-size: 0.85rem; font-weight: 700; color: var(--color-ink); margin-bottom: 0.5rem; }
+    .card-body { font-size: 0.8rem; color: var(--color-muted2); line-height: 1.7; }
+
+    /* ── Steps ──────────────────────────────────────────────────── */
+    .step { display: flex; gap: 1.25rem; padding: 1.25rem 0; border-bottom: 1px solid var(--color-border); }
+    .step:last-child { border-bottom: none; }
+    .step-num {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--color-accent);
+      letter-spacing: .05em;
+      flex-shrink: 0;
+      padding-top: 3px;
+      min-width: 2rem;
+    }
+    .step-title { font-size: 0.875rem; font-weight: 700; color: var(--color-ink); margin-bottom: 0.5rem; }
+
+    /* ── Lifecycle diagram ──────────────────────────────────────── */
+    .lifecycle {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      border: 1px solid var(--color-border);
+      overflow-x: auto;
+    }
+    .lc-step {
+      flex: 1;
+      min-width: 100px;
+      padding: 1.25rem 1rem;
+      text-align: center;
+      border-right: 1px solid var(--color-border);
+      position: relative;
+    }
+    .lc-step:last-child { border-right: none; }
+    .lc-name { font-size: 0.75rem; font-weight: 700; color: var(--color-muted2); text-transform: uppercase; letter-spacing: .08em; }
+    .lc-state { font-size: 9px; font-family: var(--font-mono); color: var(--color-muted); margin-top: 4px; }
+    .lc-step.active .lc-name { color: var(--color-accent); }
+    .lc-arrow {
+      color: var(--color-muted);
+      font-size: 0.8rem;
+      padding: 0 0.25rem;
+      flex-shrink: 0;
+    }
+
+    /* ── Callout ─────────────────────────────────────────────────── */
+    .callout {
+      border-left: 2px solid var(--color-accent);
+      padding: 0.85rem 1rem;
+      background: rgba(255,107,26,.05);
+      font-size: 0.82rem;
+      color: var(--color-muted2);
+      margin: 1rem 0;
+      line-height: 1.7;
+    }
+    .callout strong { color: var(--color-accent2); }
+
+    /* ── Pulse dot ──────────────────────────────────────────────── */
+    .pulse-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      background: #4dff9a;
+      border-radius: 50%;
+      animation: pulseAnim 2.5s infinite;
+    }
+    @keyframes pulseAnim {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50% { opacity: .4; transform: scale(.7); }
+    }
+
+    /* ── Header ─────────────────────────────────────────────────── */
+    .site-header {
+      border-bottom: 1px solid var(--color-border);
+      padding: 3rem 0;
+    }
+    .site-header-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 0 0 calc(200px + 3.5rem);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .install-cmd {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border2);
+      padding: 0.6rem 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      color: var(--color-muted2);
+      max-width: fit-content;
+    }
+    .install-cmd .prompt { color: var(--color-accent); }
+
+    /* ── Footer ─────────────────────────────────────────────────── */
+    .site-footer {
+      border-top: 1px solid var(--color-border);
+      padding: 2rem 0;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding-left: calc(200px + 3.5rem);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      letter-spacing: .05em;
+      color: var(--color-muted);
+      text-transform: uppercase;
+    }
+
+    /* ── Responsive ─────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .content { padding: 2rem 1.25rem 4rem; }
+      .site-header-inner { padding: 0 1.25rem; }
+      .site-footer { padding: 2rem 1.25rem; flex-direction: column; gap: 0.5rem; align-items: flex-start; }
+      .cards { grid-template-columns: 1fr; }
+      .card { border-right: none; border-bottom: 1px solid var(--color-border); }
+      .card:last-child { border-bottom: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── HEADER ─────────────────────────────────────────────────── -->
+  <header class="site-header">
+    <div class="site-header-inner">
+      <div style="display:flex; align-items:center; gap:1.5rem; flex-wrap:wrap;">
+        <a href="https://devexploris/shizuku" class="logo" style="text-decoration:none;">
+          <span class="logo-bracket">&lt;</span>Shizuku / Feature Flags<span class="logo-bracket">&gt;</span>
+        </a>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+          <span class="tag">PHP ≥ 8.2</span>
+          <span class="tag">Symfony 7.4 · 8.0</span>
+          <span class="tag">Doctrine ORM 3.x</span>
+          <span class="tag accent">MIT</span>
+        </div>
+      </div>
+      <p style="font-size:0.88rem; color:var(--color-muted2); max-width:480px; line-height:1.7; margin:0;">
+        Feature flag management for Symfony backed by Doctrine ORM —
+        zero configuration, full lifecycle, Profiler integration.
+      </p>
+      <div class="install-cmd">
+        <span class="prompt">$</span>
+        <span>composer require devexploris/shizuku-feature-flags</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── LAYOUT ─────────────────────────────────────────────────── -->
+  <div class="layout">
+
+    <!-- ── SIDEBAR ────────────────────────────────────────────────── -->
+    <aside class="sidebar">
+      <nav class="sidebar-inner" id="toc">
+        <p style="font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--color-muted); margin-bottom:1rem; padding-left:12px;">On this page</p>
+        <div>
+          <a href="#introduction" class="nav-link" data-id="introduction">Introduction</a>
+          <a href="#requirements" class="nav-link" data-id="requirements">Requirements</a>
+          <a href="#installation" class="nav-link" data-id="installation">Installation</a>
+          <a href="#usage"        class="nav-link" data-id="usage">Usage</a>
+          <a href="#usage-php"    class="nav-link sub" data-id="usage-php">PHP</a>
+          <a href="#usage-twig"   class="nav-link sub" data-id="usage-twig">Twig</a>
+          <a href="#commands"     class="nav-link" data-id="commands">Commands</a>
+          <a href="#cmd-list"     class="nav-link sub" data-id="cmd-list">List</a>
+          <a href="#cmd-create"   class="nav-link sub" data-id="cmd-create">Create</a>
+          <a href="#cmd-enable"   class="nav-link sub" data-id="cmd-enable">Enable / Disable</a>
+          <a href="#cmd-lock"     class="nav-link sub" data-id="cmd-lock">Lock</a>
+          <a href="#cmd-delete"   class="nav-link sub" data-id="cmd-delete">Delete</a>
+          <a href="#lifecycle"    class="nav-link" data-id="lifecycle">Flag Lifecycle</a>
+          <a href="#caching"      class="nav-link" data-id="caching">Caching</a>
+          <a href="#profiler"     class="nav-link" data-id="profiler">Profiler</a>
+          <a href="#entity"       class="nav-link" data-id="entity">Entity Reference</a>
+        </div>
+      </nav>
+    </aside>
+
+    <!-- ── CONTENT ────────────────────────────────────────────────── -->
+    <main class="content">
+
+      <!-- 01 — INTRODUCTION -->
+      <section id="introduction" class="section">
+        <div class="section-label">
+          <span class="section-num">01 —</span>
+          <h2>Introduction</h2>
+        </div>
+        <p>
+          Shizuku is a lightweight Symfony bundle that stores feature flags in your database via Doctrine ORM.
+          No external service, no YAML file to deploy — just a console command away.
+        </p>
+        <div class="cards" style="margin-top:1.5rem;">
+          <div class="card">
+            <div class="card-title">Zero config</div>
+            <div class="card-body">Works out of the box. Cache and Profiler wire automatically when the relevant Symfony packages are present.</div>
+          </div>
+          <div class="card">
+            <div class="card-title">Full lifecycle</div>
+            <div class="card-body">Create · Enable · Disable · Lock · Delete with explicit guard rails at each step.</div>
+          </div>
+          <div class="card">
+            <div class="card-title">Dev tooling</div>
+            <div class="card-body">Symfony Profiler panel, Twig <code>feature()</code> function, cache TTL, and caller-chain tracking.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 02 — REQUIREMENTS -->
+      <section id="requirements" class="section">
+        <div class="section-label">
+          <span class="section-num">02 —</span>
+          <h2>Requirements</h2>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Package</th><th>Version</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td>php</td><td>≥ 8.2</td><td>Required by Symfony 7.4+</td></tr>
+              <tr><td>symfony/http-kernel</td><td>^7.4 · ^8.0</td><td>AbstractBundle, DataCollector</td></tr>
+              <tr><td>symfony/console</td><td>^7.4 · ^8.0</td><td>CLI commands</td></tr>
+              <tr><td>doctrine/orm</td><td>^3.0</td><td>Entity persistence</td></tr>
+              <tr><td>doctrine/doctrine-bundle</td><td>^2.0 · ^3.0</td><td>ServiceEntityRepository</td></tr>
+              <tr><td>twig/twig</td><td>^3.0</td><td><code>feature()</code> Twig function</td></tr>
+              <tr><td>symfony/cache-contracts</td><td>^3.0</td><td>CacheInterface (optional at runtime)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout" style="margin-top:0.75rem;">
+          <strong>Optional:</strong> <code>symfony/cache</code> for flag caching and <code>symfony/web-profiler-bundle</code>
+          for the Profiler panel — both wired automatically when present, no configuration required.
+        </div>
+      </section>
+
+      <!-- 03 — INSTALLATION -->
+      <section id="installation" class="section">
+        <div class="section-label">
+          <span class="section-num">03 —</span>
+          <h2>Installation</h2>
+        </div>
+
+        <div style="border:1px solid var(--color-border);">
+          <div class="step">
+            <span class="step-num">01</span>
+            <div style="flex:1;">
+              <div class="step-title">Require the bundle</div>
+              <div class="terminal" style="margin-top:0.5rem;">
+                <span class="prompt">$</span> <span class="cmd">composer require devexploris/shizuku-feature-flags</span>
+              </div>
+            </div>
+          </div>
+          <div class="step">
+            <span class="step-num">02</span>
+            <div style="flex:1;">
+              <div class="step-title">Register the bundle</div>
+              <pre style="margin-top:0.5rem;"><code class="language-php">// config/bundles.php
+return [
+    Devexploris\ShizukuFeatureFlags\ShizukuFeatureFlagsBundle::class => ['all' => true],
+];</code></pre>
+            </div>
+          </div>
+          <div class="step">
+            <span class="step-num">03</span>
+            <div style="flex:1;">
+              <div class="step-title">Create the database table</div>
+              <p style="font-size:0.8rem; margin-top:0.25rem;">The bundle does not ship migrations. Generate one from your application:</p>
+              <div class="terminal" style="margin-top:0.5rem;">
+                <div><span class="prompt">$</span> <span class="cmd">php bin/console doctrine:migrations:diff</span></div>
+                <div><span class="prompt">$</span> <span class="cmd">php bin/console doctrine:migrations:migrate</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 04 — USAGE -->
+      <section id="usage" class="section">
+        <div class="section-label">
+          <span class="section-num">04 —</span>
+          <h2>Usage</h2>
+        </div>
+
+        <div id="usage-php" style="scroll-margin-top:2rem;">
+          <h3>PHP</h3>
+          <p>Inject <code>FeatureFlagService</code> and call <code>isEnabled()</code>. An unknown flag always returns <code>false</code> — no exception.</p>
+          <pre><code class="language-php">use Devexploris\ShizukuFeatureFlags\Service\FeatureFlagService;
+
+class MyService
+{
+    public function __construct(private FeatureFlagService $flags) {}
+
+    public function doSomething(): void
+    {
+        if ($this->flags->isEnabled('my_feature')) {
+            // new behaviour
+        }
+    }
+}</code></pre>
+        </div>
+
+        <div id="usage-twig" style="scroll-margin-top:2rem; margin-top:1.75rem;">
+          <h3>Twig</h3>
+          <p>The bundle registers a global <code>feature()</code> function. Unknown flags silently return <code>false</code>.</p>
+          <pre><code class="language-twig">{% if feature('my_feature') %}
+    {# new behaviour #}
+{% endif %}
+
+{# inline — e.g. toggling a CSS class #}
+&lt;body class="{{ feature('dark_mode') ? 'dark' : 'light' }}"&gt;</code></pre>
+          <div class="callout">
+            <strong>Unknown flag?</strong> If a flag is absent from the database, both <code>isEnabled()</code> and
+            <code>feature()</code> return <code>false</code>. The Symfony Profiler highlights unknown flags so
+            you never silently miss a typo in a flag name.
+          </div>
+        </div>
+      </section>
+
+      <!-- 05 — COMMANDS -->
+      <section id="commands" class="section">
+        <div class="section-label">
+          <span class="section-num">05 —</span>
+          <h2>Commands</h2>
+        </div>
+        <p>Flag names must be <code>snake_case</code>: lowercase letters, digits, and underscores — starting with a letter.</p>
+
+        <div id="cmd-list" style="scroll-margin-top:2rem;">
+          <h3>List flags</h3>
+          <div class="terminal">
+            <span class="prompt">$</span> <span class="cmd">php bin/console shizuku:list</span> <span class="arg">[filter]</span>
+          </div>
+          <p style="margin-top:0.5rem;">
+            <code>filter</code> is optional — <code>All</code>, <code>Enabled</code>, <code>Disabled</code>, <code>Locked</code>.
+            When omitted, an interactive prompt is shown.
+          </p>
+        </div>
+
+        <div id="cmd-create" style="scroll-margin-top:2rem; margin-top:1.5rem;">
+          <h3>Create</h3>
+          <div class="terminal">
+            <div><span class="prompt">$</span> <span class="cmd">php bin/console shizuku:flag:create</span></div>
+            <div><span class="prompt">$</span> <span class="cmd">php bin/console shizuku:flag:create</span> <span class="opt">--name</span>=<span class="arg">my_feature</span> <span class="opt">--description</span>=<span class="arg">"My feature"</span> <span class="opt">--enable</span></div>
+          </div>
+          <p style="margin-top:0.5rem;">Flags are created <strong>disabled</strong> by default. Pass <code>--enable</code> to start them enabled.</p>
+        </div>
+
+        <div id="cmd-enable" style="scroll-margin-top:2rem; margin-top:1.5rem;">
+          <h3>Enable / Disable</h3>
+          <div class="terminal">
+            <div><span class="prompt">$</span> <span class="cmd">php bin/console shizuku:flag:enable</span>  <span class="opt">--name</span>=<span class="arg">my_feature</span></div>
+            <div><span class="prompt">$</span> <span class="cmd">php bin/console shizuku:flag:disable</span> <span class="opt">--name</span>=<span class="arg">my_feature</span></div>
+          </div>
+          <p style="margin-top:0.5rem;">Locked flags cannot be enabled or disabled.</p>
+        </div>
+
+        <div id="cmd-lock" style="scroll-margin-top:2rem; margin-top:1.5rem;">
+          <h3>Lock</h3>
+          <div class="terminal">
+            <span class="prompt">$</span> <span class="cmd">php bin/console shizuku:flag:lock</span> <span class="opt">--name</span>=<span class="arg">my_feature</span>
+          </div>
+          <p style="margin-top:0.5rem;">
+            Locking is a one-way operation. It signals that the flag's state is final
+            and the code paths it guards should be removed before deletion.
+          </p>
+        </div>
+
+        <div id="cmd-delete" style="scroll-margin-top:2rem; margin-top:1.5rem;">
+          <h3>Delete</h3>
+          <div class="terminal">
+            <div><span class="prompt">$</span> <span class="cmd">php bin/console shizuku:flag:delete</span> <span class="opt">--name</span>=<span class="arg">my_feature</span></div>
+            <div><span class="prompt">$</span> <span class="cmd">php bin/console shizuku:flag:delete</span> <span class="opt">--name</span>=<span class="arg">my_feature</span> <span class="opt">--force</span></div>
+          </div>
+          <p style="margin-top:0.5rem;">Only <strong>locked</strong> flags can be deleted by default. Use <code>--force</code> to bypass (asks for confirmation).</p>
+        </div>
+      </section>
+
+      <!-- 06 — LIFECYCLE -->
+      <section id="lifecycle" class="section">
+        <div class="section-label">
+          <span class="section-num">06 —</span>
+          <h2>Flag Lifecycle</h2>
+        </div>
+
+        <div class="lifecycle">
+          <div class="lc-step">
+            <div class="lc-name" style="color:var(--color-muted2);">Created</div>
+            <div class="lc-state">disabled</div>
+          </div>
+          <div class="lc-arrow">→</div>
+          <div class="lc-step active">
+            <div class="lc-name">Enabled</div>
+            <div class="lc-state">active</div>
+          </div>
+          <div class="lc-arrow" style="color:var(--color-muted);">⟷</div>
+          <div class="lc-step">
+            <div class="lc-name" style="color:var(--color-muted2);">Disabled</div>
+            <div class="lc-state">inactive</div>
+          </div>
+          <div class="lc-arrow">→</div>
+          <div class="lc-step">
+            <div class="lc-name" style="color:var(--color-accent2);">Locked</div>
+            <div class="lc-state">frozen</div>
+          </div>
+          <div class="lc-arrow">→</div>
+          <div class="lc-step">
+            <div class="lc-name" style="color:var(--color-muted);">Deleted</div>
+            <div class="lc-state">gone</div>
+          </div>
+        </div>
+
+        <div style="border:1px solid var(--color-border); margin-top:1.5rem;">
+          <div class="step"><span class="step-num">01</span><span>A flag is <strong>created disabled</strong> by default (or enabled with <code>--enable</code>).</span></div>
+          <div class="step"><span class="step-num">02</span><span>It can be <strong>toggled freely</strong> between enabled and disabled until it is locked.</span></div>
+          <div class="step"><span class="step-num">03</span><span>Once <strong>locked</strong>, its state is frozen. The Profiler marks it <em style="color:var(--color-accent2);">"Must be cleaned before removal"</em> — remove all guarded code paths.</span></div>
+          <div class="step"><span class="step-num">04</span><span>Once the code is clean, the flag can be <strong>deleted</strong>.</span></div>
+        </div>
+      </section>
+
+      <!-- 07 — CACHING -->
+      <section id="caching" class="section">
+        <div class="section-label">
+          <span class="section-num">07 —</span>
+          <h2>Caching</h2>
+        </div>
+        <p>
+          When <code>cache.app</code> is available in the container, the bundle wires it automatically.
+          Flag state is cached for <strong>300 seconds</strong> and invalidated immediately on every mutating command
+          (<code>enable</code>, <code>disable</code>, <code>lock</code>, <code>delete</code>, <code>create</code>).
+        </p>
+
+        <h3>Custom cache pool</h3>
+        <pre><code class="language-yaml"># config/services.yaml
+Devexploris\ShizukuFeatureFlags\Service\FeatureFlagService:
+    arguments:
+        $cache: '@cache.my_custom_pool'</code></pre>
+
+        <h3>Disable caching</h3>
+        <pre><code class="language-yaml"># config/services.yaml
+Devexploris\ShizukuFeatureFlags\Service\FeatureFlagService:
+    arguments:
+        $cache: ~</code></pre>
+
+        <div class="callout">
+          Direct database edits bypass cache invalidation.
+          Changes will become visible after the TTL (300 s) expires.
+        </div>
+      </section>
+
+      <!-- 08 — PROFILER -->
+      <section id="profiler" class="section">
+        <div class="section-label">
+          <span class="section-num">08 —</span>
+          <h2>Symfony Profiler</h2>
+        </div>
+        <p>
+          When <code>symfony/web-profiler-bundle</code> is installed, a <strong>Feature Flags</strong> panel
+          is added to the toolbar automatically — no configuration needed.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Panel item</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>Checked / enabled</td>
+                <td>Count of all <code>isEnabled()</code> calls and how many returned <code>true</code>.</td>
+              </tr>
+              <tr>
+                <td>Locked flags</td>
+                <td>Flags frozen pending code cleanup — shown as <em>"Must be cleaned before removal"</em>.</td>
+              </tr>
+              <tr>
+                <td>Unknown flags</td>
+                <td>Flag names checked in code but absent from the database. Toolbar highlights in warning colour.</td>
+              </tr>
+              <tr>
+                <td>Caller chain</td>
+                <td>Full <code>Class::method</code> chain that triggered each <code>isEnabled()</code> call, vendor frames excluded.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 09 — ENTITY -->
+      <section id="entity" class="section">
+        <div class="section-label">
+          <span class="section-num">09 —</span>
+          <h2>Entity Reference</h2>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>name</td><td><code>string</code></td><td>Unique <code>snake_case</code> identifier. Validated on creation.</td></tr>
+              <tr><td>description</td><td><code>string</code></td><td>Human-readable label.</td></tr>
+              <tr><td>isEnabled</td><td><code>bool</code></td><td>Whether the flag is currently active.</td></tr>
+              <tr><td>isLocked</td><td><code>bool</code></td><td>Whether the flag is frozen pending cleanup.</td></tr>
+              <tr><td>createdAt</td><td><code>DateTimeImmutable</code></td><td>Set automatically on first persist.</td></tr>
+              <tr><td>enabledAt</td><td><code>DateTimeImmutable|null</code></td><td>Set on first enable, reset to <code>null</code> on disable.</td></tr>
+              <tr><td>lockedAt</td><td><code>DateTimeImmutable|null</code></td><td>Set when the flag is locked.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ── FOOTER ──────────────────────────────────────────────────── -->
+  <footer>
+    <div class="site-footer">
+      <a href="https://devexploris/shizuku" class="logo" style="font-size:13px; text-decoration:none;">
+        <span class="logo-bracket">&lt;</span>Shizuku / Feature Flags<span class="logo-bracket">&gt;</span>
+      </a>
+      <span>MIT · devexploris · Symfony 7.4 · 8.0 · PHP ≥ 8.2</span>
+    </div>
+  </footer>
+
+  <script>
+    hljs.highlightAll();
+
+    // ── Scroll spy ──────────────────────────────────────────────
+    const headings = document.querySelectorAll('main [id]');
+    const links = document.querySelectorAll('nav a[data-id]');
+
+    function setActive(id) {
+      links.forEach(l => l.classList.remove('active'));
+      const a = document.querySelector(`nav a[data-id="${id}"]`);
+      if (a) a.classList.add('active');
+    }
+
+    const obs = new IntersectionObserver(entries => {
+      entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+    }, { rootMargin: '-5% 0px -80% 0px', threshold: 0 });
+
+    headings.forEach(h => obs.observe(h));
+    if (headings.length) setActive(headings[0].id);
+  </script>
+</body>
+</html>
